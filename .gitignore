@@ -1,0 +1,22 @@
+# Admin Dashboard - Security
+admin/config/database.php
+uploads/
+*.log
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.sql.backup
+backup_*.sql

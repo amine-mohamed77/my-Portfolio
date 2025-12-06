@@ -1,0 +1,85 @@
+{
+  "appearance": {
+    "colorHex": "#3b82f6",
+    "accentColor": "#8b5cf6",
+    "backgroundGradient": {
+      "from": "#0f172a",
+      "to": "#1e293b"
+    }
+  },
+  "animation": {
+    "rotationSpeed": 1,
+    "enableBobbing": true,
+    "enableTilting": true,
+    "enablePulsing": true,
+    "pauseOnHover": true
+  },
+  "material": {
+    "metalness": 0.8,
+    "roughness": 0.2,
+    "transmission": 0.3,
+    "thickness": 0.5,
+    "clearcoat": 1.0,
+    "clearcoatRoughness": 0.1
+  },
+  "geometry": {
+    "type": "torusKnot",
+    "radius": 1,
+    "tube": 0.3,
+    "tubularSegments": 128,
+    "radialSegments": 32,
+    "p": 2,
+    "q": 3
+  },
+  "performance": {
+    "targetFPS": 60,
+    "maxPixelRatio": 2,
+    "antialias": true,
+    "powerPreference": "high-performance",
+    "autoDetectGPU": true
+  },
+  "behavior": {
+    "autoHideDelay": 2000,
+    "minLoadTime": 1500,
+    "fadeOutDuration": 800,
+    "simulateLoading": true
+  },
+  "themes": {
+    "blue": {
+      "colorHex": "#3b82f6",
+      "accentColor": "#8b5cf6",
+      "backgroundFrom": "#0f172a",
+      "backgroundTo": "#1e293b"
+    },
+    "green": {
+      "colorHex": "#10b981",
+      "accentColor": "#34d399",
+      "backgroundFrom": "#064e3b",
+      "backgroundTo": "#065f46"
+    },
+    "red": {
+      "colorHex": "#ef4444",
+      "accentColor": "#f97316",
+      "backgroundFrom": "#7f1d1d",
+      "backgroundTo": "#991b1b"
+    },
+    "purple": {
+      "colorHex": "#a855f7",
+      "accentColor": "#ec4899",
+      "backgroundFrom": "#581c87",
+      "backgroundTo": "#6b21a8"
+    },
+    "cyan": {
+      "colorHex": "#06b6d4",
+      "accentColor": "#14b8a6",
+      "backgroundFrom": "#164e63",
+      "backgroundTo": "#155e75"
+    },
+    "cyberpunk": {
+      "colorHex": "#06b6d4",
+      "accentColor": "#ec4899",
+      "backgroundFrom": "#0c0a09",
+      "backgroundTo": "#1c1917"
+    }
+  }
+}

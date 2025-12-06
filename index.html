@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting to Portfolio...</title>
+    <script>
+        // Redirect to index.php if running on localhost (XAMPP)
+        // Otherwise, this page will be used for GitHub Pages
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            window.location.href = 'index.php';
+        }
+    </script>
+</head>
+<body>
+    <p>Redirecting to portfolio...</p>
+    <p>If you're not redirected, <a href="index.php">click here</a>.</p>
+    
+    <noscript>
+        <meta http-equiv="refresh" content="0; url=index.php">
+    </noscript>
+</body>
+</html>

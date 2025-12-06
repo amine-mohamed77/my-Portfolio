@@ -1,0 +1,36 @@
+# Admin Dashboard Security Configuration
+
+# Enable Rewrite Engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /admin/
+</IfModule>
+
+# Deny access to config and includes directories
+<FilesMatch "^(config|includes)/">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Deny access to sensitive files
+<FilesMatch "\.(sql|log|md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Prevent directory browsing
+Options -Indexes
+
+# Protect against XSS and clickjacking
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# Set timezone (optional)
+# php_value date.timezone "UTC"
+
+# Increase upload limits (adjust as needed)
+php_value upload_max_filesize 10M
+php_value post_max_size 10M

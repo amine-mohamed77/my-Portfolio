@@ -1,0 +1,1918 @@
+<?php
+// Load skills and projects from database
+require_once __DIR__ . '/admin/config/database.php';
+
+$skills = [];
+$projects = [];
+
+try {
+    $database = new Database();
+    $conn = $database->getConnection();
+    
+    // Fetch active skills
+    $query = "SELECT * FROM skills WHERE is_active = 1 ORDER BY display_order";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $skills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fetch active projects
+    $query = "SELECT * FROM projects WHERE is_active = 1 ORDER BY display_order";
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch (Exception $e) {
+    // Silently fail - will show default content
+}
+?>
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amin - 3D Portfolio | Full-Stack Developer</title>
+    <meta name="description" content="Interactive 3D portfolio showcasing full-stack development expertise in PHP, Laravel, JavaScript, and modern web technologies.">
+    
+    <!-- Prevent caching for development -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- Tailwind CSS (CDN - Temporary Fix) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'tilt': 'tilt 10s infinite linear'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom Styles -->
+    <link href="./src/styles.css" rel="stylesheet">
+    
+    <!-- Google Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
+    <!-- Light Mode Text Fix -->
+    <style>
+        /* 3D Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+        }
+        
+        #loading-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        
+        #loader-canvas-container {
+            position: relative;
+        }
+        
+        #loader-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Glow Effect */
+        .loader-glow {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
+            opacity: 0.3;
+            filter: blur(60px);
+            animation: pulse-glow 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+        
+        /* Loading Text */
+        .loading-text {
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.9;
+            white-space: nowrap;
+        }
+        
+        .loading-dots {
+            display: inline-block;
+            width: 20px;
+        }
+        
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        
+        /* Progress Bar */
+        .progress-container {
+            position: absolute;
+            bottom: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            max-width: 80vw;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            border-radius: 2px;
+            transition: width 0.3s ease-out;
+            box-shadow: 0 0 20px #3b82f6;
+        }
+        
+        /* Percentage */
+        .progress-percentage {
+            position: absolute;
+            bottom: -150px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        /* Mobile Optimization */
+        @media (max-width: 640px) {
+            .loading-text {
+                font-size: 1rem;
+                bottom: -60px;
+            }
+            
+            .progress-container {
+                bottom: -100px;
+                width: 250px;
+            }
+            
+            .progress-percentage {
+                bottom: -130px;
+            }
+        }
+        
+        /* Force proper colors in light mode */
+        html:not(.dark) h1,
+        html:not(.dark) h2,
+        html:not(.dark) h3 {
+            color: #111827 !important;
+        }
+        
+        html:not(.dark) p:not(.text-white) {
+            color: #111827 !important;
+        }
+        
+        html:not(.dark) span:not(.gradient-tertiary):not([class*="bg-clip-text"]):not(.text-white) {
+            color: #111827 !important;
+        }
+        
+        html:not(.dark) .text-white:not(button *):not(button) {
+            color: #111827 !important;
+        }
+        
+        html:not(.dark) .text-white\/80,
+        html:not(.dark) .text-white\/70,
+        html:not(.dark) .text-white\/60 {
+            color: #6b7280 !important;
+        }
+        
+        html:not(.dark) .text-gray-300 {
+            color: #4b5563 !important;
+        }
+        
+        /* Project Cards Light Mode */
+        html:not(.dark) #projects h3 {
+            color: #111827 !important;
+        }
+        
+        html:not(.dark) #projects p {
+            color: #4b5563 !important;
+        }
+        
+        html:not(.dark) #projects button {
+            background: #3b82f6 !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+        }
+        
+        html:not(.dark) #projects button:hover {
+            background: #2563eb !important;
+        }
+        
+        html:not(.dark) #projects button:last-child {
+            background: white !important;
+            color: #111827 !important;
+            border: 1px solid #d1d5db !important;
+        }
+        
+        html:not(.dark) #projects button:last-child:hover {
+            background: #f3f4f6 !important;
+            border-color: #9ca3af !important;
+        }
+        
+        /* Contact Form Light Mode */
+        html:not(.dark) #contact input,
+        html:not(.dark) #contact textarea {
+            background: white !important;
+            color: #111827 !important;
+            border: 1px solid #d1d5db !important;
+        }
+        
+        html:not(.dark) #contact input::placeholder,
+        html:not(.dark) #contact textarea::placeholder {
+            color: #9ca3af !important;
+        }
+        
+        html:not(.dark) #contact button {
+            background: #3b82f6 !important;
+            color: white !important;
+        }
+        
+        html:not(.dark) #contact button:hover {
+            background: #2563eb !important;
+        }
+        
+        /* About Section Light Mode */
+        html:not(.dark) #about p {
+            color: #4b5563 !important;
+        }
+        
+        /* Navigation Light Mode */
+        html:not(.dark) nav {
+            background: rgba(255, 255, 255, 0.95) !important;
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+        
+        html:not(.dark) nav a {
+            color: #374151 !important;
+        }
+        
+        html:not(.dark) nav a:hover {
+            color: #111827 !important;
+        }
+        
+        /* Tech Tags Light Mode */
+        html:not(.dark) #projects .text-blue-300 {
+            color: #2563eb !important;
+        }
+        
+        html:not(.dark) #projects .text-green-300 {
+            color: #16a34a !important;
+        }
+        
+        html:not(.dark) #projects .text-purple-300 {
+            color: #9333ea !important;
+        }
+        
+        html:not(.dark) #projects .text-red-300 {
+            color: #dc2626 !important;
+        }
+        
+        html:not(.dark) #projects .text-yellow-300 {
+            color: #ca8a04 !important;
+        }
+        
+        html:not(.dark) #projects .text-orange-300 {
+            color: #ea580c !important;
+        }
+        
+        /* Hero Buttons Text Fix */
+        html:not(.dark) #home button.bg-blue-600,
+        html:not(.dark) #home button.bg-blue-600 span,
+        html:not(.dark) #home button.bg-blue-600 * {
+            color: white !important;
+        }
+        
+        html:not(.dark) #home button.bg-blue-600 svg {
+            stroke: white !important;
+        }
+        
+        /* Premium Skills Section Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+        
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+        
+        .premium-skill-card {
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+        
+        .premium-skill-card:hover .relative > div:first-child {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* Smooth Progress Bar Animation */
+        .skill-progress-bar {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .skill-progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        /* Fade In Animation */
+        .animate-fade-in {
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        /* Glassmorphism Enhancement */
+        .backdrop-blur-xl {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        
+        /* Smooth Transitions */
+        * {
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Light Mode Text Colors for Skills Section */
+        html:not(.dark) .premium-skill-card h3 {
+            color: #111827 !important;
+        }
+        
+        html:not(.dark) .premium-skill-card .text-gray-500 {
+            color: #6b7280 !important;
+        }
+        
+        html:not(.dark) .premium-skill-card .text-gray-400 {
+            color: #9ca3af !important;
+        }
+        
+        /* Light Mode - Project Buttons Text Color */
+        html:not(.dark) #projects .bg-blue-500,
+        html:not(.dark) #projects .bg-blue-600 {
+            color: white !important;
+        }
+        
+        html:not(.dark) #projects .bg-blue-500:hover,
+        html:not(.dark) #projects .bg-blue-600:hover {
+            color: white !important;
+        }
+        
+        /* Light Mode - Hero "View Projects" Button */
+        html:not(.dark) #home .bg-blue-600,
+        html:not(.dark) #home .bg-blue-700 {
+            color: white !important;
+        }
+        
+        html:not(.dark) #home .bg-blue-600 span,
+        html:not(.dark) #home .bg-blue-600 svg {
+            color: white !important;
+            stroke: white !important;
+        }
+        
+        /* Skill Card Dynamic Color Shadow */
+        .premium-skill-card:hover .skill-card-container {
+            box-shadow: 0 25px 50px -12px color-mix(in srgb, var(--skill-color) 40%, transparent), 
+                        0 10px 15px -3px color-mix(in srgb, var(--skill-color) 30%, transparent);
+            transition: box-shadow 0.5s ease;
+        }
+        
+        /* Fallback for browsers without color-mix support */
+        @supports not (color: color-mix(in srgb, red, blue)) {
+            .premium-skill-card:hover .skill-card-container {
+                filter: drop-shadow(0 25px 50px var(--skill-color));
+            }
+        }
+        
+    </style>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r150/three.min.js" crossorigin="anonymous"></script>
+    <script>
+        // Fallback Three.js loading
+        if (typeof THREE === 'undefined') {
+            console.warn('Primary Three.js CDN failed, trying backup...');
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/three@0.150.0/build/three.min.js';
+            script.crossOrigin = 'anonymous';
+            document.head.appendChild(script);
+        }
+    </script>
+    
+    <!-- EmailJS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+        // Initialize EmailJS with your Public Key
+        // Get your keys from: https://dashboard.emailjs.com/admin
+        (function(){
+            emailjs.init({
+                publicKey: "v6kwWoUsIW0Vn8pgI",
+            });
+        })();
+    </script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-all duration-500 overflow-x-hidden">
+    <!-- 3D Loading Screen -->
+    <div id="loading-screen">
+        <div id="loader-canvas-container" style="position: relative; width: 400px; height: 400px; max-width: 90vw; max-height: 90vh;">
+            <!-- Glow Effect -->
+            <div class="loader-glow"></div>
+            
+            <!-- 3D Canvas -->
+            <canvas id="loader-canvas" style="width: 100%; height: 100%; cursor: pointer;"></canvas>
+            
+            <!-- Loading Text -->
+            <div class="loading-text">
+                Loading<span class="loading-dots"></span>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+            </div>
+            
+            <!-- Percentage -->
+            <div class="progress-percentage" id="progress-percentage">0%</div>
+        </div>
+    </div>
+
+    <!-- Background Particles Canvas -->
+    <canvas id="bg-particles" class="three-canvas"></canvas>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-40 glass">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-2xl font-bold gradient-primary bg-clip-text text-transparent">
+                        AMIN MOHAMED
+                    </h1>
+                </div>
+                
+                <div class="hidden md:flex space-x-8">
+                    <a href="#home" class="nav-link text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-all duration-300 hover:scale-105">Home</a>
+                    <a href="#about" class="nav-link text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-all duration-300 hover:scale-105">About</a>
+                    <a href="#skills" class="nav-link text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-all duration-300 hover:scale-105">Skills</a>
+                    <a href="#projects" class="nav-link text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-all duration-300 hover:scale-105">Projects</a>
+                    <a href="#contact" class="nav-link text-gray-600 dark:text-white/80 hover:text-gray-900 dark:hover:text-white transition-all duration-300 hover:scale-105">Contact</a>
+                </div>
+                
+                <button id="theme-toggle" class="p-2 rounded-full glass hover:glow transition-all duration-300">
+                    <!-- Sun Icon (visible in dark mode) -->
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path>
+                    </svg>
+                    <!-- Moon Icon (visible in light mode) -->
+                    <svg id="theme-toggle-dark-icon" class="w-5 h-5 text-gray-700 dark:text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Full 3D -->
+    <section id="home" class="relative min-h-screen flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900">
+        <!-- Main 3D Scene Canvas -->
+        <canvas id="hero-3d" class="three-canvas interactive"></canvas>
+        
+        <!-- Hero Content -->
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="hero-content opacity-0" style="animation: fadeInUp 1s ease-out 0.5s forwards;">
+                <h1 class="text-5xl md:text-7xl lg:text-8xl font-black text-gray-900 dark:text-white mb-6 leading-tight">
+                    <span class="block">FULL-STACK</span>
+                    <span class="block gradient-tertiary bg-clip-text text-transparent">DEVELOPER</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-600 dark:text-white/80 mb-8 max-w-3xl mx-auto">
+                    Crafting immersive digital experiences with cutting-edge technologies
+                </p>
+                <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                    <a href="#projects" class="group px-8 py-4 bg-blue-600 dark:bg-white/10 hover:bg-blue-700 dark:hover:bg-white/20 rounded-full text-white font-semibold hover:glow transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+                        <span class="flex items-center">
+                            View Projects
+                            <svg class="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                            </svg>
+                        </span>
+                    </a>
+                    <a href="#contact" class="px-8 py-4 border-2 border-gray-300 dark:border-white/30 rounded-full text-gray-900 dark:text-white font-semibold hover:bg-gray-100 dark:hover:bg-white/10 transition-all duration-300 hover:scale-105">
+                        Get In Touch
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-gray-900 dark:text-white animate-bounce">
+            <div class="w-6 h-10 border-2 border-gray-400 dark:border-white/50 rounded-full flex justify-center">
+                <div class="w-1 h-3 bg-gray-600 dark:bg-white rounded-full mt-2 animate-pulse"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section with 3D Avatar -->
+    <section id="about" class="relative py-20 bg-gray-50 dark:bg-black/50">
+        <!-- 3D Avatar Canvas -->
+        <canvas id="about-3d" class="three-canvas"></canvas>
+        
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div class="space-y-6">
+                    <h2 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-8">
+                        About <span class="gradient-secondary bg-clip-text text-transparent">Me</span>
+                    </h2>
+                    <p class="text-lg text-white/80 leading-relaxed">
+                        I'm a passionate Full-Stack Developer with over 3 years of experience creating innovative web solutions. I specialize in modern JavaScript frameworks, PHP/Laravel backend development, and cutting-edge 3D web experiences.
+                    </p>
+                    <p class="text-lg text-white/80 leading-relaxed">
+                        My expertise spans from database architecture to interactive frontend experiences, 
+                        always focusing on performance, scalability, and user engagement.
+                    </p>
+                    
+                    <!-- Stats -->
+                    <div class="grid grid-cols-3 gap-6 mt-12">
+                        <div class="text-center glass rounded-xl p-6 card-3d">
+                            <div class="text-3xl font-bold gradient-primary bg-clip-text text-transparent">36+</div>
+                            <div class="text-white/60 text-sm">Projects</div>
+                        </div>
+                        <div class="text-center glass rounded-xl p-6 card-3d">
+                            <div class="text-3xl font-bold gradient-secondary bg-clip-text text-transparent">3+</div>
+                            <div class="text-white/60 text-sm">Years</div>
+                        </div>
+                        <div class="text-center glass rounded-xl p-6 card-3d">
+                            <div class="text-3xl font-bold gradient-tertiary bg-clip-text text-transparent">4+</div>
+                            <div class="text-white/60 text-sm">Years Experience</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Profile Picture -->
+                <div class="flex justify-center lg:justify-end">
+                    <div class="relative">
+                        <!-- Profile Image Container -->
+                        <div class="w-80 h-80 rounded-full overflow-hidden glass glow-hover card-3d relative shadow-2xl border-4 border-white/10">
+                            <!-- Your Profile Photo -->
+                            <img src="amin.png" alt="Amin - Full Stack Developer" 
+                                 class="w-full h-full object-cover"
+                                 style="object-position: 45% 20%; filter: brightness(1.2);"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            
+                            <!-- Fallback placeholder if image doesn't load -->
+                            <div class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center" style="display: none;">
+                                <div class="text-center text-white">
+                                    <div class="text-6xl mb-4">👨‍💻</div>
+                                    <div class="text-xl font-semibold">Amin</div>
+                                    <div class="text-sm opacity-80">Full-Stack Developer</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Decorative border -->
+                            <div class="absolute inset-0 rounded-full border-4 border-white/20"></div>
+                        </div>
+                        
+                        <!-- Floating decoration elements -->
+                        <div class="absolute -top-4 -right-4 w-8 h-8 bg-blue-500 rounded-full opacity-60 animate-float"></div>
+                        <div class="absolute -bottom-6 -left-6 w-6 h-6 bg-purple-500 rounded-full opacity-60 animate-float" style="animation-delay: 0.5s;"></div>
+                        <div class="absolute top-1/2 -right-8 w-4 h-4 bg-green-500 rounded-full opacity-60 animate-float" style="animation-delay: 1s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Premium Skills Section - 3D Floating Cards -->
+    <section id="skills" class="relative py-24 bg-white dark:bg-gradient-to-b dark:from-black dark:via-slate-900 dark:to-black overflow-hidden">
+        <!-- 3D Background Canvas -->
+        <canvas id="skills-3d" class="absolute inset-0 w-full h-full"></canvas>
+        
+        <!-- Animated Background Elements -->
+        <div class="absolute inset-0 opacity-20">
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
+        </div>
+        
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Premium Section Header -->
+            <div class="text-center mb-16 animate-fade-in">
+                <div class="inline-block mb-4">
+                    <span class="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 border border-blue-500/20 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 text-sm font-semibold tracking-wide uppercase">
+                        My Expertise
+                    </span>
+                </div>
+                <h2 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+                    Skills & <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Technologies</span>
+                </h2>
+                <p class="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                    Crafting exceptional digital experiences with cutting-edge tools and technologies
+                </p>
+            </div>
+            
+            <!-- Premium Skills Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                <?php
+                if (count($skills) > 0) {
+                    foreach ($skills as $index => $skill) {
+                        // Get custom color from database or use default
+                        $customColor = isset($skill['color']) && !empty($skill['color']) ? $skill['color'] : '#3b82f6';
+                        
+                        // Check if icon is URL, Material Icon, or text
+                        $iconValue = $skill['icon_value'] ?: substr($skill['name'], 0, 2);
+                        $isUrl = strpos($iconValue, 'http') === 0;
+                        $isMaterialIcon = !$isUrl && strlen($iconValue) > 2 && preg_match('/^[a-z_]+$/', $iconValue);
+                        
+                        // Animation delay for stagger effect
+                        $delay = $index * 50;
+                        ?>
+                        <div class="premium-skill-card group" style="animation-delay: <?php echo $delay; ?>ms;">
+                            <!-- Glassmorphism Container -->
+                            <div class="relative h-full bg-white/50 dark:bg-white/5 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-white/10 p-6 transition-all duration-500 hover:scale-105 skill-card-container" style="--skill-color: <?php echo $customColor; ?>;">
+                                
+                                <!-- Gradient Border Overlay -->
+                                <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-500" style="background: linear-gradient(135deg, <?php echo $customColor; ?>, <?php echo $customColor; ?>88);"></div>
+                                
+                                <!-- Content -->
+                                <div class="relative z-10 flex flex-col items-center text-center space-y-4">
+                                    
+                                    <!-- Floating Icon -->
+                                    <div class="relative">
+                                        <!-- Glow Effect -->
+                                        <div class="absolute inset-0 rounded-2xl blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-110" style="background: <?php echo $customColor; ?>;"></div>
+                                        
+                                        <!-- Icon Container -->
+                                        <div class="relative w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110 border border-white/10" style="background: <?php echo $isUrl ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, ' . $customColor . ', ' . $customColor . '88)'; ?>;">
+                                            <?php if ($isUrl): ?>
+                                                <img src="<?php echo htmlspecialchars($iconValue); ?>" 
+                                                     alt="<?php echo htmlspecialchars($skill['name']); ?>" 
+                                                     class="w-12 h-12 md:w-14 md:h-14 object-contain"
+                                                     style="filter: drop-shadow(0 4px 20px rgba(0,0,0,0.3));">
+                                            <?php elseif ($isMaterialIcon): ?>
+                                                <span class="material-symbols-outlined text-4xl md:text-5xl text-white drop-shadow-2xl">
+                                                    <?php echo htmlspecialchars($iconValue); ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-2xl md:text-3xl font-bold text-white drop-shadow-2xl">
+                                                    <?php echo htmlspecialchars($iconValue); ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Skill Name -->
+                                    <h3 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
+                                        <?php echo htmlspecialchars($skill['name']); ?>
+                                    </h3>
+                                    
+                                    <!-- Percentage Badge -->
+                                    <div class="inline-flex items-center justify-center px-3 py-1 rounded-full text-white text-sm font-semibold shadow-lg" style="background: linear-gradient(90deg, <?php echo $customColor; ?>, <?php echo $customColor; ?>88);">
+                                        <?php echo $skill['level']; ?>%
+                                    </div>
+                                    
+                                    <!-- Animated Progress Bar -->
+                                    <div class="w-full">
+                                        <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                            <div class="skill-progress-bar h-full rounded-full shadow-lg transition-all duration-1000 ease-out" 
+                                                 data-progress="<?php echo $skill['level']; ?>"
+                                                 style="width: 0%; background: linear-gradient(90deg, <?php echo $customColor; ?>, <?php echo $customColor; ?>cc);">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Proficiency Label -->
+                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        <?php 
+                                        if ($skill['level'] >= 90) echo 'Expert';
+                                        elseif ($skill['level'] >= 75) echo 'Advanced';
+                                        elseif ($skill['level'] >= 50) echo 'Intermediate';
+                                        else echo 'Beginner';
+                                        ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php
+                    }
+                } else {
+                    ?>
+                    <div class="col-span-full">
+                        <div class="text-center py-16 px-6 bg-white/50 dark:bg-white/5 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-white/10">
+                            <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-5xl text-white">psychology</span>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">No Skills Added Yet</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                                Start building your skills portfolio by adding your expertise from the admin dashboard
+                            </p>
+                            <a href="admin/dashboard.php" 
+                               class="inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+                                <span class="material-symbols-outlined mr-2">add_circle</span>
+                                Add Skills
+                            </a>
+                        </div>
+                    </div>
+                    <?php
+                }
+                ?>
+            </div>
+            
+            <!-- Skills Summary -->
+            <div class="mt-20 text-center">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="skill-summary-card">
+                        <div class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent">3+</div>
+                        <div class="text-gray-700 dark:text-gray-300">Years Experience</div>
+                    </div>
+                    <div class="skill-summary-card">
+                        <div class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">4+</div>
+                        <div class="text-gray-700 dark:text-gray-300">Years Technologies</div>
+                    </div>
+                    <div class="skill-summary-card">
+                        <div class="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">36+</div>
+                        <div class="text-gray-700 dark:text-gray-300">Projects</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects Section with 3D Interactive Cards -->
+    <section id="projects" class="relative py-20 bg-gray-50 dark:bg-black/50">
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    Featured <span class="gradient-primary bg-clip-text text-transparent">Projects</span>
+                </h2>
+                <p class="text-xl text-white/60">Interactive 3D project showcase</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <?php
+                if (count($projects) > 0) {
+                    foreach ($projects as $project) {
+                        // Parse tech_stack JSON
+                        $techStack = json_decode($project['tech_stack'], true) ?: [];
+                        
+                        // Tech color mapping with actual color values
+                        $techColors = [
+                            'laravel' => ['bg' => 'bg-red-500/20', 'text' => 'text-red-600 dark:text-red-400'],
+                            'vue' => ['bg' => 'bg-green-500/20', 'text' => 'text-green-600 dark:text-green-400'],
+                            'vue.js' => ['bg' => 'bg-green-500/20', 'text' => 'text-green-600 dark:text-green-400'],
+                            'react' => ['bg' => 'bg-blue-500/20', 'text' => 'text-blue-600 dark:text-blue-400'],
+                            'javascript' => ['bg' => 'bg-yellow-500/20', 'text' => 'text-yellow-600 dark:text-yellow-400'],
+                            'php' => ['bg' => 'bg-purple-500/20', 'text' => 'text-purple-600 dark:text-purple-400'],
+                            'mysql' => ['bg' => 'bg-blue-500/20', 'text' => 'text-blue-600 dark:text-blue-400'],
+                            'css' => ['bg' => 'bg-blue-500/20', 'text' => 'text-blue-600 dark:text-blue-400'],
+                            'html' => ['bg' => 'bg-orange-500/20', 'text' => 'text-orange-600 dark:text-orange-400'],
+                            'postgresql' => ['bg' => 'bg-blue-500/20', 'text' => 'text-blue-600 dark:text-blue-400'],
+                            'node' => ['bg' => 'bg-green-500/20', 'text' => 'text-green-600 dark:text-green-400'],
+                            'node.js' => ['bg' => 'bg-green-500/20', 'text' => 'text-green-600 dark:text-green-400'],
+                            'docker' => ['bg' => 'bg-cyan-500/20', 'text' => 'text-cyan-600 dark:text-cyan-400'],
+                            'mongodb' => ['bg' => 'bg-green-500/20', 'text' => 'text-green-600 dark:text-green-400'],
+                            'redis' => ['bg' => 'bg-red-500/20', 'text' => 'text-red-600 dark:text-red-400'],
+                            'typescript' => ['bg' => 'bg-blue-500/20', 'text' => 'text-blue-600 dark:text-blue-400'],
+                            'python' => ['bg' => 'bg-yellow-500/20', 'text' => 'text-yellow-600 dark:text-yellow-400'],
+                            'tailwindcss' => ['bg' => 'bg-cyan-500/20', 'text' => 'text-cyan-600 dark:text-cyan-400'],
+                            'scss' => ['bg' => 'bg-pink-500/20', 'text' => 'text-pink-600 dark:text-pink-400'],
+                            'admin dashboard' => ['bg' => 'bg-indigo-500/20', 'text' => 'text-indigo-600 dark:text-indigo-400'],
+                            'kotlin' => ['bg' => 'bg-purple-500/20', 'text' => 'text-purple-600 dark:text-purple-400'],
+                            'jetpack compose' => ['bg' => 'bg-green-500/20', 'text' => 'text-green-600 dark:text-green-400']
+                        ];
+                        ?>
+                        <div class="relative glass rounded-xl overflow-hidden card-3d glow-hover group">
+                            <canvas class="project-mini-canvas"></canvas>
+                            <div class="p-6">
+                                <?php if (!empty($project['image_path'])): ?>
+                                    <div class="h-48 rounded-lg mb-6 overflow-hidden">
+                                        <img src="<?php echo htmlspecialchars($project['image_path']); ?>" 
+                                             alt="<?php echo htmlspecialchars($project['title']); ?>" 
+                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
+                                    </div>
+                                <?php else: ?>
+                                    <div class="h-48 gradient-primary rounded-lg mb-6 flex items-center justify-center">
+                                        <span class="text-4xl">🚀</span>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                                    <?php echo htmlspecialchars($project['title']); ?>
+                                </h3>
+                                <p class="text-gray-600 dark:text-white/70 mb-4">
+                                    <?php echo htmlspecialchars($project['description']); ?>
+                                </p>
+                                
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <?php foreach ($techStack as $tech): 
+                                        $techLower = strtolower($tech);
+                                        $colorClasses = $techColors[$techLower] ?? ['bg' => 'bg-gray-500/20', 'text' => 'text-gray-600 dark:text-gray-400'];
+                                    ?>
+                                        <span class="px-3 py-1 <?php echo $colorClasses['bg']; ?> <?php echo $colorClasses['text']; ?> rounded-full text-xs font-medium">
+                                            <?php echo htmlspecialchars($tech); ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                                
+                                <div class="flex gap-3">
+                                    <?php if (!empty($project['live_url'])): ?>
+                                        <a href="<?php echo htmlspecialchars($project['live_url']); ?>" 
+                                           target="_blank"
+                                           class="flex-1 bg-blue-500 hover:bg-blue-600 dark:bg-white/10 dark:hover:bg-white/20 text-white py-2 rounded-lg transition-all text-center">
+                                            Live Demo
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($project['github_url'])): ?>
+                                        <a href="<?php echo htmlspecialchars($project['github_url']); ?>" 
+                                           target="_blank"
+                                           class="flex-1 border border-gray-300 dark:border-white/20 hover:border-gray-400 dark:hover:border-white/40 text-gray-900 dark:text-white py-2 rounded-lg transition-all text-center">
+                                            GitHub
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php
+                    }
+                } else {
+                    ?>
+                    <div class="col-span-full text-center py-12">
+                        <div class="text-white/60 mb-4">
+                            <p class="text-lg font-semibold">No projects found</p>
+                            <p class="text-sm mt-2">Add projects from the admin dashboard</p>
+                            <a href="admin/dashboard.php" class="inline-block mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                                Go to Admin Dashboard
+                            </a>
+                        </div>
+                    </div>
+                    <?php
+                }
+                ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section with 3D Orb -->
+    <section id="contact" class="relative py-20 bg-white dark:bg-black/30">
+        <!-- Contact 3D Canvas -->
+        <canvas id="contact-3d" class="three-canvas"></canvas>
+        
+        <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                    Get In <span class="gradient-secondary bg-clip-text text-transparent">Touch</span>
+                </h2>
+                <p class="text-xl text-white/60">Let's create something amazing together</p>
+            </div>
+            
+            <div class="glass rounded-2xl p-8 card-3d">
+                <!-- Success/Error Message -->
+                <div id="contact-message" class="hidden mb-6 p-4 rounded-lg"></div>
+                
+                <form id="contact-form" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-white/80 text-sm font-medium mb-2">Name</label>
+                            <input type="text" name="from_name" id="contact-name" required class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-blue-400 focus:outline-none transition-all" placeholder="Your Name">
+                        </div>
+                        <div>
+                            <label class="block text-white/80 text-sm font-medium mb-2">Email</label>
+                            <input type="email" name="from_email" id="contact-email" required class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-blue-400 focus:outline-none transition-all" placeholder="your@email.com">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-white/80 text-sm font-medium mb-2">Message</label>
+                        <textarea rows="5" name="message" id="contact-message-text" required class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-blue-400 focus:outline-none transition-all resize-none" placeholder="Tell me about your project..."></textarea>
+                    </div>
+                    <button type="submit" id="contact-submit" class="w-full gradient-primary py-4 rounded-lg font-semibold hover:glow transition-all duration-300 hover:scale-105" style="color: white !important;">
+                        <span id="submit-text" style="color: white !important;">Send Message</span>
+                        <span id="submit-loading" class="hidden">
+                            <svg class="animate-spin inline-block w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Sending...
+                        </span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative py-12 bg-gray-100 dark:bg-black">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h3 class="text-2xl font-bold gradient-primary bg-clip-text text-transparent mb-4">AMIN MOHAMED</h3>
+            <p class="text-gray-600 dark:text-white/60 mb-6">Full-Stack Developer & 3D Web Experience Architect</p>
+            <!-- Social Media Links -->
+            <div class="flex justify-center space-x-6 mb-8">
+                <!-- Facebook -->
+                <a href="https://www.facebook.com/share/17VpSySWAe/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" 
+                   class="group w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/50 dark:hover:shadow-blue-500/50 hover:bg-blue-600 dark:hover:bg-blue-500">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                </a>
+
+                <!-- Instagram -->
+                <a href="https://www.instagram.com/amin_mohamed777?igsh=OGMyaTc2dzJqdWNy&utm_source=qr" target="_blank" rel="noopener noreferrer" 
+                   class="group w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-pink-500/50 dark:hover:shadow-pink-500/30 hover:bg-gradient-to-br hover:from-purple-600 hover:via-pink-500 hover:to-orange-400">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                    </svg>
+                </a>
+
+                <!-- LinkedIn -->
+                <a href="https://www.linkedin.com/in/amin-mohamed-4667a1245?utm_source=share_via&utm_content=profile&utm_medium=member_ios" target="_blank" rel="noopener noreferrer" 
+                   class="group w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-600/50 dark:hover:shadow-blue-400/50 hover:bg-blue-700 dark:hover:bg-blue-600">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                </a>
+
+                <!-- GitHub -->
+                <a href="https://github.com/amine-mohamed77" target="_blank" rel="noopener noreferrer" 
+                   class="group w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-gray-600/50 dark:hover:shadow-white/50 hover:bg-gray-800 dark:hover:bg-white/20">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                </a>
+            </div>
+            <p class="text-gray-500 dark:text-white/40">&copy; 2024 Amin. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Three.js and Interactive JavaScript -->
+    <script>
+        // ============================================================================
+        // GLOBAL VARIABLES AND UTILITIES
+        // ============================================================================
+        
+        let scenes = {};
+        let renderers = {};
+        let cameras = {};
+        let animationFrames = {};
+        let mouse = { x: 0, y: 0 };
+        let isLoaded = false;
+        
+        // Performance detection
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isLowPerformance = isMobile || navigator.hardwareConcurrency < 4;
+        
+        // Utility functions
+        function lerp(start, end, factor) {
+            return start + (end - start) * factor;
+        }
+        
+        function map(value, inMin, inMax, outMin, outMax) {
+            return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+        }
+        
+        // ============================================================================
+        // BACKGROUND PARTICLES SYSTEM
+        // ============================================================================
+        
+        function initBackgroundParticles() {
+            const canvas = document.getElementById('bg-particles');
+            if (!canvas) return;
+            
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isLowPerformance });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // Create particles
+            const particleCount = isLowPerformance ? 100 : 200;
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 20;
+                positions[i + 1] = (Math.random() - 0.5) * 20;
+                positions[i + 2] = (Math.random() - 0.5) * 20;
+                
+                const color = new THREE.Color();
+                color.setHSL(Math.random() * 0.3 + 0.5, 0.7, 0.6);
+                colors[i] = color.r;
+                colors[i + 1] = color.g;
+                colors[i + 2] = color.b;
+            }
+            
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particleSystem = new THREE.Points(particles, particleMaterial);
+            scene.add(particleSystem);
+            
+            camera.position.z = 5;
+            
+            scenes.bgParticles = scene;
+            cameras.bgParticles = camera;
+            renderers.bgParticles = renderer;
+            
+            // Animation
+            function animate() {
+                animationFrames.bgParticles = requestAnimationFrame(animate);
+                
+                particleSystem.rotation.y += 0.001;
+                particleSystem.rotation.x += 0.0005;
+                
+                // Mouse parallax
+                particleSystem.rotation.y += mouse.x * 0.0001;
+                particleSystem.rotation.x += mouse.y * 0.0001;
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        
+        // ============================================================================
+        // HERO 3D SCENE - Main centerpiece
+        // ============================================================================
+        
+        function initHero3D() {
+            const canvas = document.getElementById('hero-3d');
+            if (!canvas) return;
+            
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isLowPerformance });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0x667eea, 1);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0x764ba2, 0.8, 10);
+            pointLight.position.set(-5, 0, 0);
+            scene.add(pointLight);
+            
+            // Create main 3D object - Neon Wireframe Sphere
+            const sphereGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const sphereMaterial = new THREE.MeshBasicMaterial({
+                color: 0x667eea,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            scene.add(sphere);
+            
+            // Add inner glowing sphere
+            const innerSphereGeometry = new THREE.SphereGeometry(1.5, 16, 16);
+            const innerSphereMaterial = new THREE.MeshBasicMaterial({
+                color: 0x764ba2,
+                transparent: true,
+                opacity: 0.3,
+                blending: THREE.AdditiveBlending
+            });
+            const innerSphere = new THREE.Mesh(innerSphereGeometry, innerSphereMaterial);
+            scene.add(innerSphere);
+            
+            // Add floating cubes around the sphere
+            const cubes = [];
+            for (let i = 0; i < 8; i++) {
+                const cubeGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+                const cubeMaterial = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(i / 8, 0.7, 0.6),
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+                
+                const angle = (i / 8) * Math.PI * 2;
+                cube.position.set(Math.cos(angle) * 4, Math.sin(angle) * 2, Math.sin(angle) * 4);
+                cubes.push(cube);
+                scene.add(cube);
+            }
+            
+            camera.position.z = 8;
+            
+            scenes.hero = scene;
+            cameras.hero = camera;
+            renderers.hero = renderer;
+            
+            // Animation
+            function animate() {
+                animationFrames.hero = requestAnimationFrame(animate);
+                
+                const time = Date.now() * 0.001;
+                
+                // Rotate main sphere
+                sphere.rotation.y += 0.01;
+                sphere.rotation.x += 0.005;
+                
+                // Rotate inner sphere opposite direction
+                innerSphere.rotation.y -= 0.015;
+                innerSphere.rotation.x -= 0.008;
+                
+                // Animate floating cubes
+                cubes.forEach((cube, i) => {
+                    const angle = (i / 8) * Math.PI * 2 + time * 0.5;
+                    cube.position.x = Math.cos(angle) * 4;
+                    cube.position.y = Math.sin(angle * 2) * 2;
+                    cube.position.z = Math.sin(angle) * 4;
+                    cube.rotation.x += 0.02;
+                    cube.rotation.y += 0.02;
+                });
+                
+                // Mouse interaction
+                sphere.rotation.y += mouse.x * 0.001;
+                sphere.rotation.x += mouse.y * 0.001;
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        
+        // ============================================================================
+        // ABOUT SECTION 3D - Floating Avatar Shape
+        // ============================================================================
+        
+        function initAbout3D() {
+            const canvas = document.getElementById('about-3d');
+            if (!canvas) return;
+            
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isLowPerformance });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // Create floating geometric shape
+            const geometry = new THREE.IcosahedronGeometry(1.5, 1);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xf093fb,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.6
+            });
+            const shape = new THREE.Mesh(geometry, material);
+            shape.position.set(2, 0, 0);
+            scene.add(shape);
+            
+            // Add glow effect
+            const glowGeometry = new THREE.IcosahedronGeometry(1.8, 1);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xf5576c,
+                transparent: true,
+                opacity: 0.2,
+                blending: THREE.AdditiveBlending
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            glow.position.set(2, 0, 0);
+            scene.add(glow);
+            
+            camera.position.z = 5;
+            
+            scenes.about = scene;
+            cameras.about = camera;
+            renderers.about = renderer;
+            
+            // Animation
+            function animate() {
+                animationFrames.about = requestAnimationFrame(animate);
+                
+                const time = Date.now() * 0.001;
+                
+                shape.rotation.y += 0.01;
+                shape.rotation.x += 0.005;
+                shape.position.y = Math.sin(time) * 0.3;
+                
+                glow.rotation.y -= 0.005;
+                glow.rotation.x -= 0.003;
+                glow.position.y = Math.sin(time) * 0.3;
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        
+        // ============================================================================
+        // PREMIUM SKILLS SECTION 3D - Subtle Background Effects
+        // ============================================================================
+        
+        function initSkills3D() {
+            const canvas = document.getElementById('skills-3d');
+            if (!canvas) return;
+            
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                alpha: true, 
+                antialias: !isLowPerformance 
+            });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // Create subtle floating geometric shapes for background ambiance
+            const geometries = [
+                new THREE.TetrahedronGeometry(0.5),
+                new THREE.OctahedronGeometry(0.4),
+                new THREE.IcosahedronGeometry(0.3),
+                new THREE.DodecahedronGeometry(0.35)
+            ];
+            
+            const materials = [
+                new THREE.MeshBasicMaterial({ 
+                    color: 0x06b6d4, 
+                    transparent: true, 
+                    opacity: 0.1,
+                    wireframe: true 
+                }),
+                new THREE.MeshBasicMaterial({ 
+                    color: 0x8b5cf6, 
+                    transparent: true, 
+                    opacity: 0.08,
+                    wireframe: true 
+                }),
+                new THREE.MeshBasicMaterial({ 
+                    color: 0x10b981, 
+                    transparent: true, 
+                    opacity: 0.06,
+                    wireframe: true 
+                })
+            ];
+            
+            const floatingShapes = [];
+            
+            // Create 12 subtle floating shapes
+            for (let i = 0; i < 12; i++) {
+                const geometry = geometries[Math.floor(Math.random() * geometries.length)];
+                const material = materials[Math.floor(Math.random() * materials.length)];
+                const shape = new THREE.Mesh(geometry, material);
+                
+                // Random positioning
+                shape.position.set(
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 10
+                );
+                
+                // Random rotation
+                shape.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                
+                scene.add(shape);
+                floatingShapes.push({
+                    mesh: shape,
+                    rotationSpeed: {
+                        x: (Math.random() - 0.5) * 0.02,
+                        y: (Math.random() - 0.5) * 0.02,
+                        z: (Math.random() - 0.5) * 0.02
+                    },
+                    floatSpeed: Math.random() * 0.02 + 0.01,
+                    floatRange: Math.random() * 2 + 1
+                });
+            }
+            
+            // Add subtle ambient lighting effect
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+            scene.add(ambientLight);
+            
+            camera.position.z = 10;
+            
+            scenes.skills = scene;
+            cameras.skills = camera;
+            renderers.skills = renderer;
+            
+            // Smooth animation loop
+            function animate() {
+                animationFrames.skills = requestAnimationFrame(animate);
+                
+                const time = Date.now() * 0.001;
+                
+                floatingShapes.forEach((shapeObj, index) => {
+                    const shape = shapeObj.mesh;
+                    
+                    // Gentle rotation
+                    shape.rotation.x += shapeObj.rotationSpeed.x;
+                    shape.rotation.y += shapeObj.rotationSpeed.y;
+                    shape.rotation.z += shapeObj.rotationSpeed.z;
+                    
+                    // Subtle floating motion
+                    shape.position.y += Math.sin(time * shapeObj.floatSpeed + index) * 0.01;
+                    
+                    // Mouse parallax effect (very subtle)
+                    const parallaxStrength = 0.3;
+                    shape.position.x += mouse.x * parallaxStrength * (index % 3 + 1) * 0.1;
+                    shape.position.y += mouse.y * parallaxStrength * (index % 2 + 1) * 0.1;
+                });
+                
+                // Gentle camera movement
+                camera.position.x = mouse.x * 0.5;
+                camera.position.y = mouse.y * 0.3;
+                camera.lookAt(0, 0, 0);
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        
+        // ============================================================================
+        // PROJECT CARDS MINI 3D SCENES
+        // ============================================================================
+        
+        function initProjectMiniScenes() {
+            const canvases = document.querySelectorAll('.project-mini-canvas');
+            
+            canvases.forEach((canvas, index) => {
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+                
+                renderer.setSize(80, 80);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                
+                // Create small rotating shape
+                const shapes = [
+                    new THREE.BoxGeometry(0.5, 0.5, 0.5),
+                    new THREE.SphereGeometry(0.3, 8, 8),
+                    new THREE.ConeGeometry(0.3, 0.8, 6)
+                ];
+                
+                const colors = [0x667eea, 0xf093fb, 0x4facfe];
+                
+                const geometry = shapes[index % shapes.length];
+                const material = new THREE.MeshBasicMaterial({
+                    color: colors[index % colors.length],
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const shape = new THREE.Mesh(geometry, material);
+                scene.add(shape);
+                
+                camera.position.z = 2;
+                
+                // Animation
+                function animate() {
+                    requestAnimationFrame(animate);
+                    
+                    shape.rotation.x += 0.02;
+                    shape.rotation.y += 0.02;
+                    
+                    renderer.render(scene, camera);
+                }
+                animate();
+            });
+        }
+        
+        // ============================================================================
+        // CONTACT SECTION 3D - Glowing Orb
+        // ============================================================================
+        
+        function initContact3D() {
+            const canvas = document.getElementById('contact-3d');
+            if (!canvas) return;
+            
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isLowPerformance });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // Create glowing orb
+            const orbGeometry = new THREE.SphereGeometry(1, 32, 32);
+            const orbMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4facfe,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+            const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+            orb.position.set(-3, 0, 0);
+            scene.add(orb);
+            
+            // Add rotating ring
+            const ringGeometry = new THREE.TorusGeometry(1.5, 0.1, 8, 16);
+            const ringMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00f2fe,
+                transparent: true,
+                opacity: 0.8
+            });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            ring.position.set(-3, 0, 0);
+            scene.add(ring);
+            
+            camera.position.z = 5;
+            
+            scenes.contact = scene;
+            cameras.contact = camera;
+            renderers.contact = renderer;
+            
+            // Animation
+            function animate() {
+                animationFrames.contact = requestAnimationFrame(animate);
+                
+                const time = Date.now() * 0.001;
+                
+                orb.rotation.y += 0.01;
+                orb.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
+                
+                ring.rotation.x += 0.02;
+                ring.rotation.z += 0.01;
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        
+        // ============================================================================
+        // EVENT HANDLERS AND INITIALIZATION
+        // ============================================================================
+        
+        // Mouse tracking
+        document.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+        
+        // Window resize handler
+        function handleResize() {
+            Object.keys(cameras).forEach(key => {
+                const camera = cameras[key];
+                const renderer = renderers[key];
+                
+                if (camera && renderer) {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                }
+            });
+        }
+        
+        window.addEventListener('resize', handleResize);
+        
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+        
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        const sunIcon = document.getElementById('theme-toggle-light-icon');
+        const moonIcon = document.getElementById('theme-toggle-dark-icon');
+        
+        // Function to update icon visibility
+        function updateThemeIcon(isDark) {
+            if (isDark) {
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            } else {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            }
+        }
+        
+        // Initialize theme
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+        const isDark = currentTheme === 'dark';
+        html.classList.toggle('dark', isDark);
+        updateThemeIcon(isDark);
+        
+        // Toggle theme on click
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            const theme = html.classList.contains('dark') ? 'dark' : 'light';
+            localStorage.setItem('theme', theme);
+            updateThemeIcon(theme === 'dark');
+        });
+        
+        // Form handling
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Add loading state
+            const button = this.querySelector('button[type="submit"]');
+            const originalText = button.textContent;
+            button.textContent = 'Sending...';
+            button.disabled = true;
+            
+            // Simulate form submission
+            setTimeout(() => {
+                alert('Thank you for your message! I will get back to you soon.');
+                this.reset();
+                button.textContent = originalText;
+                button.disabled = false;
+            }, 2000);
+        });
+        
+        // Animate Skills Progress Bars
+        function animateSkillsProgressBars() {
+            const progressBars = document.querySelectorAll('.skill-progress-bar');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const bar = entry.target;
+                        const progress = bar.getAttribute('data-progress');
+                        
+                        // Animate width
+                        setTimeout(() => {
+                            bar.style.width = progress + '%';
+                        }, 100);
+                        
+                        observer.unobserve(bar);
+                    }
+                });
+            }, {
+                threshold: 0.5
+            });
+            
+            progressBars.forEach(bar => observer.observe(bar));
+        }
+        
+        // 3D Loader Variables
+        let loaderScene, loaderCamera, loaderRenderer, loader3D, loaderAnimationId;
+        let loaderProgress = 0;
+        
+        // Initialize 3D Loader
+        function init3DLoader() {
+            const canvas = document.getElementById('loader-canvas');
+            const container = document.getElementById('loader-canvas-container');
+            
+            if (!canvas || !container || typeof THREE === 'undefined') {
+                console.warn('3D Loader: Canvas, container not found, or Three.js not loaded');
+                return;
+            }
+            
+            try {
+                // Scene
+                loaderScene = new THREE.Scene();
+                
+                // Camera
+                loaderCamera = new THREE.PerspectiveCamera(
+                    45,
+                    container.clientWidth / container.clientHeight,
+                    0.1,
+                    1000
+                );
+                loaderCamera.position.z = 5;
+                
+                // Renderer
+                loaderRenderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    antialias: true,
+                    alpha: true
+                });
+                loaderRenderer.setSize(container.clientWidth, container.clientHeight);
+                loaderRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                
+                // Create Torus Knot
+                const geometry = new THREE.TorusKnotGeometry(1, 0.3, 100, 16, 2, 3);
+                const material = new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color('#3b82f6'),
+                    metalness: 0.8,
+                    roughness: 0.2,
+                    transmission: 0.3,
+                    thickness: 0.5,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.1,
+                    side: THREE.DoubleSide
+                });
+                
+                loader3D = new THREE.Mesh(geometry, material);
+                loaderScene.add(loader3D);
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                loaderScene.add(ambientLight);
+                
+                const directionalLight1 = new THREE.DirectionalLight('#3b82f6', 2);
+                directionalLight1.position.set(5, 5, 5);
+                loaderScene.add(directionalLight1);
+                
+                const directionalLight2 = new THREE.DirectionalLight('#8b5cf6', 1.5);
+                directionalLight2.position.set(-5, -5, 5);
+                loaderScene.add(directionalLight2);
+                
+                // Start animation
+                animateLoader();
+                
+                // Simulate loading progress
+                simulateLoading();
+                
+            } catch (error) {
+                console.error('Error initializing 3D loader:', error);
+            }
+        }
+        
+        // Animate 3D Loader
+        function animateLoader() {
+            loaderAnimationId = requestAnimationFrame(animateLoader);
+            
+            if (loader3D) {
+                const time = Date.now() * 0.001;
+                
+                // Rotation
+                loader3D.rotation.x += 0.005;
+                loader3D.rotation.y += 0.008;
+                
+                // Bobbing
+                loader3D.position.y = Math.sin(time * 0.5) * 0.1;
+                
+                // Tilting
+                loader3D.rotation.z = Math.sin(time * 0.3) * 0.1;
+                
+                // Pulsing
+                const scale = 1 + Math.sin(time * 2) * 0.05;
+                loader3D.scale.set(scale, scale, scale);
+            }
+            
+            if (loaderRenderer && loaderScene && loaderCamera) {
+                loaderRenderer.render(loaderScene, loaderCamera);
+            }
+        }
+        
+        // Simulate Loading Progress
+        function simulateLoading() {
+            const interval = setInterval(() => {
+                loaderProgress += Math.random() * 15;
+                
+                if (loaderProgress >= 100) {
+                    loaderProgress = 100;
+                    clearInterval(interval);
+                    setTimeout(hideLoadingScreen, 500);
+                }
+                
+                updateProgress(loaderProgress);
+            }, 200);
+        }
+        
+        // Update Progress Bar
+        function updateProgress(value) {
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercentage = document.getElementById('progress-percentage');
+            
+            if (progressBar) {
+                progressBar.style.width = Math.round(value) + '%';
+            }
+            
+            if (progressPercentage) {
+                progressPercentage.textContent = Math.round(value) + '%';
+            }
+        }
+        
+        // Hide loading screen function
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.classList.add('hidden');
+                
+                // Stop loader animation
+                if (loaderAnimationId) {
+                    cancelAnimationFrame(loaderAnimationId);
+                }
+                
+                // Cleanup
+                if (loaderRenderer) {
+                    loaderRenderer.dispose();
+                }
+            }
+        }
+        
+        // Initialize all 3D scenes
+        function initAll3DScenes() {
+            // Initialize 3D loader first
+            init3DLoader();
+            
+            // Initialize skills progress bars animation
+            animateSkillsProgressBars();
+            
+            if (typeof THREE === 'undefined') {
+                console.warn('Three.js not loaded - running without 3D effects');
+                return;
+            }
+            
+            try {
+                initBackgroundParticles();
+                initHero3D();
+                initAbout3D();
+                initSkills3D();
+                initProjectMiniScenes();
+                initContact3D();
+                
+                isLoaded = true;
+                
+            } catch (error) {
+                console.error('Error initializing 3D scenes:', error);
+            }
+        }
+        
+        // Performance optimization - pause animations when tab is not visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                Object.keys(animationFrames).forEach(key => {
+                    if (animationFrames[key]) {
+                        cancelAnimationFrame(animationFrames[key]);
+                    }
+                });
+            } else if (isLoaded) {
+                // Restart animations when tab becomes visible
+                initAll3DScenes();
+            }
+        });
+        
+        // Initialize everything when page loads
+        window.addEventListener('load', () => {
+            initAll3DScenes();
+        });
+        
+        // Fallback initialization if load event doesn't fire
+        if (document.readyState === 'complete') {
+            initAll3DScenes();
+        }
+        
+        // Emergency fallback - always hide loading screen after 3 seconds
+        setTimeout(() => {
+            hideLoadingScreen();
+        }, 3000);
+    </script>
+
+    <!-- Contact Form Handler with EmailJS -->
+    <script>
+        // Use setTimeout to ensure everything is loaded
+        setTimeout(function() {
+            console.log('Initializing contact form...');
+            
+            if (typeof emailjs === 'undefined') {
+                console.error('❌ EmailJS not loaded!');
+                alert('EmailJS failed to load. Please refresh the page.');
+                return;
+            }
+            
+            const contactForm = document.getElementById('contact-form');
+            if (!contactForm) {
+                console.error('❌ Contact form not found!');
+                return;
+            }
+            
+            console.log('✅ Setting up form handler...');
+            
+            contactForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('📤 Form submitted!');
+                
+                const submitBtn = document.getElementById('contact-submit');
+                const messageDiv = document.getElementById('contact-message');
+                
+                if (!submitBtn || !messageDiv) {
+                    console.error('❌ Missing form elements!');
+                    return;
+                }
+                
+                // Change button text directly
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<svg class="animate-spin inline-block w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Sending...';
+                messageDiv.classList.add('hidden');
+                
+                console.log('Calling EmailJS...');
+                
+                // Send email using EmailJS
+                emailjs.sendForm('service_ff6ibpj', 'template_787vzwo', this)
+                    .then(function(response) {
+                        console.log('✅ SUCCESS!', response);
+                        
+                        // Show success message
+                        messageDiv.classList.remove('hidden');
+                        messageDiv.className = 'mb-6 p-4 rounded-lg bg-green-500/20 border border-green-500 text-green-300';
+                        messageDiv.innerHTML = '✅ Thank you! Your message has been sent successfully!';
+                        
+                        // Reset form
+                        contactForm.reset();
+                        
+                        // Re-enable button
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                        
+                        // Hide message after 5 seconds
+                        setTimeout(() => {
+                            messageDiv.classList.add('hidden');
+                        }, 5000);
+                        
+                    })
+                    .catch(function(error) {
+                        console.error('❌ FAILED!', error);
+                        
+                        // Show error message
+                        messageDiv.classList.remove('hidden');
+                        messageDiv.className = 'mb-6 p-4 rounded-lg bg-red-500/20 border border-red-500 text-red-300';
+                        messageDiv.innerHTML = '❌ Error: ' + (error.text || error.message || 'Unknown error');
+                        
+                        // Re-enable button
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    });
+            });
+            
+            console.log('✅ Contact form ready!');
+        }, 2000); // Wait 2 seconds for everything to load
+    </script>
+</body>
+</html>
