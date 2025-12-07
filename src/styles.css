@@ -11,6 +11,15 @@
 
 html {
   scroll-behavior: smooth;
+  /* Fix for Android viewport height */
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow-x: hidden;
 }
 
 /* Custom Gradients */
@@ -269,12 +278,19 @@ html {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
 }
 
 .three-canvas.interactive {
   pointer-events: auto;
+  z-index: 1;
+}
+
+/* Safe area padding for mobile devices */
+.py-safe {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* Dark Mode */
@@ -499,5 +515,49 @@ html {
   
   .skill-card:hover .skill-card-inner {
     transform: translateY(-5px);
+  }
+  
+  /* Ensure hero content is visible on mobile */
+  #home .hero-content {
+    position: relative;
+    z-index: 30 !important;
+  }
+  
+  /* Fix canvas positioning on mobile */
+  .three-canvas {
+    z-index: 1 !important;
+  }
+  
+  /* Ensure animations are visible on mobile */
+  @keyframes fadeInUp {
+    from { 
+      opacity: 0; 
+      transform: translateY(30px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+  
+  /* Force hardware acceleration for smoother animations */
+  .hero-content,
+  .hero-content * {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  
+  /* Fix button visibility on mobile */
+  #home a {
+    position: relative;
+    z-index: 40 !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Ensure scroll indicator is visible */
+  #home .animate-bounce {
+    z-index: 20;
   }
 }
