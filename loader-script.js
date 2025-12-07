@@ -61,15 +61,21 @@
             );
             camera.position.z = 5;
             
-            // Renderer
+            // Renderer - Android-optimized settings
             renderer = new THREE.WebGLRenderer({
                 canvas: canvas,
-                antialias: detectHighPerformanceDevice(),
+                antialias: true,
                 alpha: true,
+                preserveDrawingBuffer: true,
                 powerPreference: 'high-performance'
             });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // Android compatibility
+            if (typeof THREE.sRGBEncoding !== 'undefined') {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+            }
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 1.2;
             

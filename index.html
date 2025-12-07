@@ -469,6 +469,29 @@
             }
         }
         
+        /* Ensure all canvas elements are visible on Android */
+        canvas {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            /* GPU acceleration */
+            will-change: transform;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+        
+        /* Canvas parent containers */
+        #hero-3d,
+        #about-3d,
+        #skills-3d,
+        #bg-particles,
+        #contact-3d,
+        #loader-canvas {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
     </style>
     
     <!-- Three.js -->
@@ -1665,7 +1688,13 @@ It demonstrates basic Compose concepts such as state management, composable func
         
         // Performance detection
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isAndroid = /Android/i.test(navigator.userAgent);
         const isLowPerformance = isMobile || navigator.hardwareConcurrency < 4;
+        
+        // Android-specific logging
+        if (isAndroid) {
+            console.log('Android device detected - optimizing 3D rendering');
+        }
         
         // Utility functions
         function lerp(start, end, factor) {
@@ -1686,10 +1715,18 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isLowPerformance });
+            const renderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                alpha: true, 
+                antialias: true,
+                preserveDrawingBuffer: true
+            });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            if (typeof THREE.sRGBEncoding !== 'undefined') {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+            }
             
             // Create particles
             const particleCount = isLowPerformance ? 100 : 200;
@@ -1755,10 +1792,18 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isLowPerformance });
+            const renderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                alpha: true, 
+                antialias: true,
+                preserveDrawingBuffer: true
+            });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            if (typeof THREE.sRGBEncoding !== 'undefined') {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+            }
             
             // Lighting
             const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
@@ -1860,10 +1905,18 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isLowPerformance });
+            const renderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                alpha: true, 
+                antialias: true,
+                preserveDrawingBuffer: true
+            });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            if (typeof THREE.sRGBEncoding !== 'undefined') {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+            }
             
             // Create floating geometric shape
             const geometry = new THREE.IcosahedronGeometry(1.5, 1);
@@ -1927,11 +1980,15 @@ It demonstrates basic Compose concepts such as state management, composable func
             const renderer = new THREE.WebGLRenderer({ 
                 canvas, 
                 alpha: true, 
-                antialias: !isLowPerformance 
+                antialias: true,
+                preserveDrawingBuffer: true
             });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            if (typeof THREE.sRGBEncoding !== 'undefined') {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+            }
             
             // Create subtle floating geometric shapes for background ambiance
             const geometries = [
@@ -2050,10 +2107,18 @@ It demonstrates basic Compose concepts such as state management, composable func
             canvases.forEach((canvas, index) => {
                 const scene = new THREE.Scene();
                 const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-                const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+                const renderer = new THREE.WebGLRenderer({ 
+                    canvas, 
+                    alpha: true, 
+                    antialias: true,
+                    preserveDrawingBuffer: true
+                });
                 
                 renderer.setSize(80, 80);
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                if (typeof THREE.sRGBEncoding !== 'undefined') {
+                    renderer.outputEncoding = THREE.sRGBEncoding;
+                }
                 
                 // Create small rotating shape
                 const shapes = [
@@ -2100,10 +2165,18 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isLowPerformance });
+            const renderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                alpha: true, 
+                antialias: true,
+                preserveDrawingBuffer: true
+            });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            if (typeof THREE.sRGBEncoding !== 'undefined') {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+            }
             
             // Create glowing orb
             const orbGeometry = new THREE.SphereGeometry(1, 32, 32);
@@ -2417,6 +2490,8 @@ It demonstrates basic Compose concepts such as state management, composable func
         
         // Initialize all 3D scenes
         function initAll3DScenes() {
+            console.log('Initializing all 3D scenes...');
+            
             // Initialize 3D loader first
             init3DLoader();
             
@@ -2428,19 +2503,35 @@ It demonstrates basic Compose concepts such as state management, composable func
                 return;
             }
             
-            try {
-                initBackgroundParticles();
-                initHero3D();
-                initAbout3D();
-                initSkills3D();
-                initProjectMiniScenes();
-                initContact3D();
-                
-                isLoaded = true;
-                
-            } catch (error) {
-                console.error('Error initializing 3D scenes:', error);
-            }
+            // Wait for next frame to ensure DOM is fully ready (Android fix)
+            requestAnimationFrame(() => {
+                try {
+                    console.log('Starting 3D scene initialization...');
+                    initBackgroundParticles();
+                    console.log('Background particles initialized');
+                    
+                    initHero3D();
+                    console.log('Hero 3D initialized');
+                    
+                    initAbout3D();
+                    console.log('About 3D initialized');
+                    
+                    initSkills3D();
+                    console.log('Skills 3D initialized');
+                    
+                    initProjectMiniScenes();
+                    console.log('Project mini scenes initialized');
+                    
+                    initContact3D();
+                    console.log('Contact 3D initialized');
+                    
+                    isLoaded = true;
+                    console.log('All 3D scenes loaded successfully!');
+                    
+                } catch (error) {
+                    console.error('Error initializing 3D scenes:', error);
+                }
+            });
         }
         
         // Performance optimization - pause animations when tab is not visible
@@ -2457,18 +2548,29 @@ It demonstrates basic Compose concepts such as state management, composable func
             }
         });
         
-        // Initialize everything when page loads
-        window.addEventListener('load', () => {
-            initAll3DScenes();
-        });
-        
-        // Fallback initialization if load event doesn't fire
-        if (document.readyState === 'complete') {
-            initAll3DScenes();
+        // Initialize everything when DOM is ready (better for Android)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('DOMContentLoaded - initializing 3D scenes');
+                setTimeout(() => initAll3DScenes(), 100);
+            });
+        } else {
+            // DOM already loaded
+            console.log('DOM already loaded - initializing 3D scenes');
+            setTimeout(() => initAll3DScenes(), 100);
         }
+        
+        // Also initialize on window load as backup
+        window.addEventListener('load', () => {
+            console.log('Window load event - ensuring 3D scenes are initialized');
+            if (!isLoaded) {
+                initAll3DScenes();
+            }
+        });
         
         // Emergency fallback - always hide loading screen after 3 seconds
         setTimeout(() => {
+            console.log('Emergency fallback - hiding loading screen');
             hideLoadingScreen();
         }, 3000);
     </script>
