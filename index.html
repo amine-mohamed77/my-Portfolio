@@ -1723,6 +1723,41 @@ It demonstrates basic Compose concepts such as state management, composable func
             }
         }
         
+        // Configure renderer for Android compatibility
+        function configureRenderer(renderer) {
+            if (typeof THREE.sRGBEncoding !== 'undefined') {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+            }
+            
+            // Android-specific: Enable physically correct lights
+            if (isAndroid) {
+                renderer.physicallyCorrectLights = true;
+                console.log('Android: Enabled physicallyCorrectLights');
+            }
+        }
+        
+        // Retry animation start if canvas is not ready (Android fix)
+        function startAnimationWhenReady(canvas, initFunction, maxRetries = 5) {
+            let retries = 0;
+            
+            function tryStart() {
+                if (canvas && (canvas.width > 0 || retries >= maxRetries)) {
+                    initFunction();
+                    if (isAndroid) {
+                        console.log(`Animation started after ${retries} retries`);
+                    }
+                } else {
+                    retries++;
+                    if (isAndroid) {
+                        console.log(`Canvas not ready, retry ${retries}/${maxRetries}`);
+                    }
+                    setTimeout(tryStart, 100);
+                }
+            }
+            
+            tryStart();
+        }
+        
         // Utility functions
         function lerp(start, end, factor) {
             return start + (end - start) * factor;
@@ -1751,9 +1786,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(getOptimalPixelRatio());
-            if (typeof THREE.sRGBEncoding !== 'undefined') {
-                renderer.outputEncoding = THREE.sRGBEncoding;
-            }
+            configureRenderer(renderer);
             
             // Create particles
             const particleCount = isLowPerformance ? 100 : 200;
@@ -1828,9 +1861,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(getOptimalPixelRatio());
-            if (typeof THREE.sRGBEncoding !== 'undefined') {
-                renderer.outputEncoding = THREE.sRGBEncoding;
-            }
+            configureRenderer(renderer);
             
             // Lighting
             const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
@@ -1850,7 +1881,7 @@ It demonstrates basic Compose concepts such as state management, composable func
                 color: 0x667eea,
                 wireframe: true,
                 transparent: true,
-                opacity: 0.8
+                opacity: isAndroid ? 0.9 : 0.8  // Android: Increase opacity for visibility
             });
             const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
             scene.add(sphere);
@@ -1860,7 +1891,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             const innerSphereMaterial = new THREE.MeshBasicMaterial({
                 color: 0x764ba2,
                 transparent: true,
-                opacity: 0.3,
+                opacity: isAndroid ? 0.4 : 0.3,  // Android: Increase opacity for visibility
                 blending: THREE.AdditiveBlending
             });
             const innerSphere = new THREE.Mesh(innerSphereGeometry, innerSphereMaterial);
@@ -1941,9 +1972,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(getOptimalPixelRatio());
-            if (typeof THREE.sRGBEncoding !== 'undefined') {
-                renderer.outputEncoding = THREE.sRGBEncoding;
-            }
+            configureRenderer(renderer);
             
             // Create floating geometric shape
             const geometry = new THREE.IcosahedronGeometry(1.5, 1);
@@ -2013,9 +2042,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(getOptimalPixelRatio());
-            if (typeof THREE.sRGBEncoding !== 'undefined') {
-                renderer.outputEncoding = THREE.sRGBEncoding;
-            }
+            configureRenderer(renderer);
             
             // Create subtle floating geometric shapes for background ambiance
             const geometries = [
@@ -2143,9 +2170,7 @@ It demonstrates basic Compose concepts such as state management, composable func
                 
                 renderer.setSize(80, 80);
                 renderer.setPixelRatio(getOptimalPixelRatio());
-                if (typeof THREE.sRGBEncoding !== 'undefined') {
-                    renderer.outputEncoding = THREE.sRGBEncoding;
-                }
+                configureRenderer(renderer);
                 
                 // Create small rotating shape
                 const shapes = [
@@ -2201,9 +2226,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(getOptimalPixelRatio());
-            if (typeof THREE.sRGBEncoding !== 'undefined') {
-                renderer.outputEncoding = THREE.sRGBEncoding;
-            }
+            configureRenderer(renderer);
             
             // Create glowing orb
             const orbGeometry = new THREE.SphereGeometry(1, 32, 32);
@@ -2530,27 +2553,49 @@ It demonstrates basic Compose concepts such as state management, composable func
                 return;
             }
             
-            // Wait for next frame to ensure DOM is fully ready (Android fix)
+            // Wait for next frame to ensure DOM is fully ready
             requestAnimationFrame(() => {
                 try {
                     console.log('Starting 3D scene initialization...');
-                    initBackgroundParticles();
-                    console.log('Background particles initialized');
                     
-                    initHero3D();
-                    console.log('Hero 3D initialized');
-                    
-                    initAbout3D();
-                    console.log('About 3D initialized');
-                    
-                    initSkills3D();
-                    console.log('Skills 3D initialized');
-                    
-                    initProjectMiniScenes();
-                    console.log('Project mini scenes initialized');
-                    
-                    initContact3D();
-                    console.log('Contact 3D initialized');
+                    // Android: Use retry logic to ensure canvas is ready
+                    if (isAndroid) {
+                        const bgCanvas = document.getElementById('bg-particles');
+                        const heroCanvas = document.getElementById('hero-3d');
+                        const aboutCanvas = document.getElementById('about-3d');
+                        const skillsCanvas = document.getElementById('skills-3d');
+                        const contactCanvas = document.getElementById('contact-3d');
+                        
+                        startAnimationWhenReady(bgCanvas, initBackgroundParticles);
+                        startAnimationWhenReady(heroCanvas, initHero3D);
+                        startAnimationWhenReady(aboutCanvas, initAbout3D);
+                        startAnimationWhenReady(skillsCanvas, initSkills3D);
+                        startAnimationWhenReady(contactCanvas, initContact3D);
+                        
+                        // Project mini scenes don't need retry
+                        setTimeout(() => initProjectMiniScenes(), 200);
+                        
+                        console.log('Android: Using retry logic for canvas initialization');
+                    } else {
+                        // iPhone/Desktop: Initialize immediately
+                        initBackgroundParticles();
+                        console.log('Background particles initialized');
+                        
+                        initHero3D();
+                        console.log('Hero 3D initialized');
+                        
+                        initAbout3D();
+                        console.log('About 3D initialized');
+                        
+                        initSkills3D();
+                        console.log('Skills 3D initialized');
+                        
+                        initProjectMiniScenes();
+                        console.log('Project mini scenes initialized');
+                        
+                        initContact3D();
+                        console.log('Contact 3D initialized');
+                    }
                     
                     isLoaded = true;
                     console.log('All 3D scenes loaded successfully!');

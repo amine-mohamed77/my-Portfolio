@@ -79,6 +79,13 @@
             if (typeof THREE.sRGBEncoding !== 'undefined') {
                 renderer.outputEncoding = THREE.sRGBEncoding;
             }
+            
+            // Android-specific: Enable physically correct lights
+            if (isAndroid) {
+                renderer.physicallyCorrectLights = true;
+                console.log('Loader: Android physicallyCorrectLights enabled');
+            }
+            
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 1.2;
             
