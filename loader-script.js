@@ -70,7 +70,10 @@
                 powerPreference: 'high-performance'
             });
             renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            // Android-specific pixel ratio optimization
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            const pixelRatio = isAndroid ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2);
+            renderer.setPixelRatio(pixelRatio);
             
             // Android compatibility
             if (typeof THREE.sRGBEncoding !== 'undefined') {

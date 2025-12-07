@@ -424,15 +424,22 @@
             }
         }
         
-        /* Android-specific fixes */
+        /* Android-specific fixes - Only apply on Android devices */
         @media screen and (max-width: 768px) {
-            /* Ensure hero section is always visible */
+            /* Ensure hero section is always visible on mobile */
             #home {
                 min-height: 100dvh !important;
                 min-height: -webkit-fill-available !important;
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: center !important;
+            }
+            
+            /* Android-only: Use svh for better viewport handling */
+            @supports (min-height: 100svh) {
+                #home {
+                    min-height: 100svh !important;
+                }
             }
             
             /* Force hero content to be on top */
@@ -469,15 +476,11 @@
             }
         }
         
-        /* Ensure all canvas elements are visible on Android */
+        /* Ensure all canvas elements are visible */
         canvas {
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
-            /* GPU acceleration */
-            will-change: transform;
-            -webkit-transform: translateZ(0);
-            transform: translateZ(0);
         }
         
         /* Canvas parent containers */
@@ -490,6 +493,16 @@
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
+        }
+        
+        /* Android-specific GPU acceleration and dimensions */
+        .android-device canvas,
+        .android-device .three-canvas {
+            will-change: transform !important;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            width: 100vw !important;
+            height: 100vh !important;
         }
         
     </style>
@@ -1691,9 +1704,23 @@ It demonstrates basic Compose concepts such as state management, composable func
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isLowPerformance = isMobile || navigator.hardwareConcurrency < 4;
         
-        // Android-specific logging
+        // Android-specific optimizations
         if (isAndroid) {
-            console.log('Android device detected - optimizing 3D rendering');
+            console.log('Android device detected - applying Android-specific optimizations');
+            // Add Android class to body for CSS targeting
+            document.documentElement.classList.add('android-device');
+            document.body.classList.add('android-device');
+        }
+        
+        // Get optimal pixel ratio based on device
+        function getOptimalPixelRatio() {
+            if (isAndroid) {
+                // Android: Limit to 1.5 to avoid GPU issues
+                return Math.min(window.devicePixelRatio, 1.5);
+            } else {
+                // iPhone/Desktop: Use up to 2
+                return Math.min(window.devicePixelRatio, 2);
+            }
         }
         
         // Utility functions
@@ -1723,7 +1750,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(getOptimalPixelRatio());
             if (typeof THREE.sRGBEncoding !== 'undefined') {
                 renderer.outputEncoding = THREE.sRGBEncoding;
             }
@@ -1800,7 +1827,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(getOptimalPixelRatio());
             if (typeof THREE.sRGBEncoding !== 'undefined') {
                 renderer.outputEncoding = THREE.sRGBEncoding;
             }
@@ -1913,7 +1940,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(getOptimalPixelRatio());
             if (typeof THREE.sRGBEncoding !== 'undefined') {
                 renderer.outputEncoding = THREE.sRGBEncoding;
             }
@@ -1985,7 +2012,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(getOptimalPixelRatio());
             if (typeof THREE.sRGBEncoding !== 'undefined') {
                 renderer.outputEncoding = THREE.sRGBEncoding;
             }
@@ -2115,7 +2142,7 @@ It demonstrates basic Compose concepts such as state management, composable func
                 });
                 
                 renderer.setSize(80, 80);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer.setPixelRatio(getOptimalPixelRatio());
                 if (typeof THREE.sRGBEncoding !== 'undefined') {
                     renderer.outputEncoding = THREE.sRGBEncoding;
                 }
@@ -2173,7 +2200,7 @@ It demonstrates basic Compose concepts such as state management, composable func
             });
             
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(getOptimalPixelRatio());
             if (typeof THREE.sRGBEncoding !== 'undefined') {
                 renderer.outputEncoding = THREE.sRGBEncoding;
             }
