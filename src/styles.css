@@ -556,8 +556,18 @@ body {
     -webkit-tap-highlight-color: transparent;
   }
   
-  /* Ensure scroll indicator is visible */
+  /* Ensure scroll indicator is visible and centered */
   #home .animate-bounce {
     z-index: 20;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+  
+  /* Fix scroll indicator positioning */
+  section#home > div.absolute.bottom-8 {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 }
