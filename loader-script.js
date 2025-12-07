@@ -111,54 +111,88 @@
      * Create 3D Loader Object (Torus Knot)
      */
     function createLoaderObject() {
-        // Geometry - Adjust complexity based on device
-        const complexity = detectHighPerformanceDevice() ? [128, 32] : [64, 16];
+        // Geometry - Android-specific optimization
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        let complexity;
+        
+        if (isAndroid) {
+            // Android: Simplified geometry for better performance
+            complexity = [48, 12];
+            console.log('Loader: Using Android-optimized geometry');
+        } else {
+            // iPhone/Desktop: Original quality
+            complexity = detectHighPerformanceDevice() ? [128, 32] : [64, 16];
+        }
+        
         const geometry = new THREE.TorusKnotGeometry(1, 0.3, complexity[0], complexity[1], 2, 3);
         
-        // Material - Hybrid Metallic + Translucent
-        const material = new THREE.MeshPhysicalMaterial({
-            color: new THREE.Color(CONFIG.colorHex),
-            metalness: CONFIG.metalness,
-            roughness: CONFIG.roughness,
-            transmission: 0.3,
-            thickness: 0.5,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.1,
-            envMapIntensity: 1.5,
-            side: THREE.DoubleSide
-        });
+        // Material - Simplified for Android
+        let material;
+        if (isAndroid) {
+            // Android: Use simpler MeshStandardMaterial instead of MeshPhysicalMaterial
+            material = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(CONFIG.colorHex),
+                metalness: CONFIG.metalness,
+                roughness: CONFIG.roughness,
+                emissive: new THREE.Color(CONFIG.colorHex),
+                emissiveIntensity: 0.2
+            });
+            console.log('Loader: Using Android-optimized material');
+        } else {
+            // iPhone/Desktop: Original MeshPhysicalMaterial
+            material = new THREE.MeshPhysicalMaterial({
+                color: new THREE.Color(CONFIG.colorHex),
+                metalness: CONFIG.metalness,
+                roughness: CONFIG.roughness,
+                transmission: 0.3,
+                thickness: 0.5,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                envMapIntensity: 1.5,
+                side: THREE.DoubleSide
+            });
+        }
         
         loader3D = new THREE.Mesh(geometry, material);
         scene.add(loader3D);
         
-        // Environment Map
-        const envMap = createEnvironmentMap();
-        scene.environment = envMap;
-        material.envMap = envMap;
+        // Environment Map - Skip for Android to improve performance
+        if (!isAndroid) {
+            const envMap = createEnvironmentMap();
+            scene.environment = envMap;
+            material.envMap = envMap;
+        }
     }
     
     /**
      * Setup Lighting
      */
     function setupLighting() {
-        // Ambient Light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        
+        // Ambient Light - Increased intensity for Android
+        const ambientLight = new THREE.AmbientLight(0xffffff, isAndroid ? 0.7 : 0.5);
         scene.add(ambientLight);
         
-        // Directional Light 1 (Primary Color)
-        const directionalLight1 = new THREE.DirectionalLight(CONFIG.colorHex, 2);
+        // Directional Light 1 (Primary Color) - Increased intensity for Android
+        const directionalLight1 = new THREE.DirectionalLight(CONFIG.colorHex, isAndroid ? 2.5 : 2);
         directionalLight1.position.set(5, 5, 5);
         scene.add(directionalLight1);
         
-        // Directional Light 2 (Accent Color)
-        const directionalLight2 = new THREE.DirectionalLight(CONFIG.accentColor, 1.5);
-        directionalLight2.position.set(-5, -5, 5);
-        scene.add(directionalLight2);
-        
-        // Point Light
-        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-        pointLight.position.set(0, 0, 10);
-        scene.add(pointLight);
+        // Android: Skip extra lights for better performance
+        if (!isAndroid) {
+            // Directional Light 2 (Accent Color)
+            const directionalLight2 = new THREE.DirectionalLight(CONFIG.accentColor, 1.5);
+            directionalLight2.position.set(-5, -5, 5);
+            scene.add(directionalLight2);
+            
+            // Point Light
+            const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+            pointLight.position.set(0, 0, 10);
+            scene.add(pointLight);
+        } else {
+            console.log('Loader: Using Android-optimized lighting (2 lights instead of 4)');
+        }
     }
     
     /**

@@ -1724,16 +1724,50 @@ It demonstrates basic Compose concepts such as state management, composable func
         }
         
         // Configure renderer for Android compatibility
-        function configureRenderer(renderer) {
+        function configureRenderer(renderer, isLoadingOrHero = false) {
             if (typeof THREE.sRGBEncoding !== 'undefined') {
                 renderer.outputEncoding = THREE.sRGBEncoding;
             }
             
-            // Android-specific: Enable physically correct lights
-            if (isAndroid) {
+            // Android-specific optimizations for Loading/Hero sections
+            if (isAndroid && isLoadingOrHero) {
                 renderer.physicallyCorrectLights = true;
-                console.log('Android: Enabled physicallyCorrectLights');
+                // Additional Android optimizations for heavy sections
+                renderer.powerPreference = 'high-performance';
+                console.log('Android: Optimized renderer for Loading/Hero section');
             }
+        }
+        
+        // Simplify geometry for Android (Loading/Hero sections only)
+        function getOptimizedGeometry(geometryType, ...params) {
+            if (isAndroid) {
+                // Reduce geometry complexity for Android
+                switch(geometryType) {
+                    case 'sphere':
+                        // Reduce segments: original (32,32) -> Android (16,16)
+                        return new THREE.SphereGeometry(params[0], 16, 16);
+                    case 'sphereInner':
+                        // Reduce segments: original (16,16) -> Android (12,12)
+                        return new THREE.SphereGeometry(params[0], 12, 12);
+                    default:
+                        return null;
+                }
+            } else {
+                // iPhone/Desktop: Original quality
+                switch(geometryType) {
+                    case 'sphere':
+                        return new THREE.SphereGeometry(params[0], 32, 32);
+                    case 'sphereInner':
+                        return new THREE.SphereGeometry(params[0], 16, 16);
+                    default:
+                        return null;
+                }
+            }
+        }
+        
+        // Optimize lights for Android (Loading/Hero sections only)
+        function getOptimizedLightIntensity(baseIntensity) {
+            return isAndroid ? baseIntensity * 1.2 : baseIntensity;
         }
         
         // Retry animation start if canvas is not ready (Android fix)
@@ -1861,22 +1895,25 @@ It demonstrates basic Compose concepts such as state management, composable func
             
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(getOptimalPixelRatio());
-            configureRenderer(renderer);
+            configureRenderer(renderer, true);  // Mark as Hero section for optimization
             
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            // Lighting - Optimized for Android
+            const ambientLight = new THREE.AmbientLight(0x404040, getOptimizedLightIntensity(0.4));
             scene.add(ambientLight);
             
-            const directionalLight = new THREE.DirectionalLight(0x667eea, 1);
+            const directionalLight = new THREE.DirectionalLight(0x667eea, getOptimizedLightIntensity(1));
             directionalLight.position.set(5, 5, 5);
             scene.add(directionalLight);
             
-            const pointLight = new THREE.PointLight(0x764ba2, 0.8, 10);
-            pointLight.position.set(-5, 0, 0);
-            scene.add(pointLight);
+            // Android: Reduce to single light, iPhone/Desktop: Keep point light
+            if (!isAndroid) {
+                const pointLight = new THREE.PointLight(0x764ba2, 0.8, 10);
+                pointLight.position.set(-5, 0, 0);
+                scene.add(pointLight);
+            }
             
-            // Create main 3D object - Neon Wireframe Sphere
-            const sphereGeometry = new THREE.SphereGeometry(2, 32, 32);
+            // Create main 3D object - Neon Wireframe Sphere (Optimized geometry for Android)
+            const sphereGeometry = getOptimizedGeometry('sphere', 2);
             const sphereMaterial = new THREE.MeshBasicMaterial({
                 color: 0x667eea,
                 wireframe: true,
@@ -1886,8 +1923,8 @@ It demonstrates basic Compose concepts such as state management, composable func
             const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
             scene.add(sphere);
             
-            // Add inner glowing sphere
-            const innerSphereGeometry = new THREE.SphereGeometry(1.5, 16, 16);
+            // Add inner glowing sphere (Optimized geometry for Android)
+            const innerSphereGeometry = getOptimizedGeometry('sphereInner', 1.5);
             const innerSphereMaterial = new THREE.MeshBasicMaterial({
                 color: 0x764ba2,
                 transparent: true,
@@ -1920,8 +1957,36 @@ It demonstrates basic Compose concepts such as state management, composable func
             cameras.hero = camera;
             renderers.hero = renderer;
             
+            // Android: Visibility-based rendering optimization
+            let isHeroVisible = true;
+            if (isAndroid) {
+                const heroSection = document.getElementById('home');
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        isHeroVisible = entry.isIntersecting;
+                        if (isHeroVisible && !animationFrames.hero) {
+                            console.log('Android: Hero section visible, resuming animation');
+                            animate();
+                        } else if (!isHeroVisible && animationFrames.hero) {
+                            console.log('Android: Hero section hidden, pausing animation');
+                            cancelAnimationFrame(animationFrames.hero);
+                            animationFrames.hero = null;
+                        }
+                    });
+                }, { threshold: 0.1 });
+                
+                if (heroSection) {
+                    observer.observe(heroSection);
+                }
+            }
+            
             // Animation
             function animate() {
+                // Android: Only animate when visible
+                if (isAndroid && !isHeroVisible) {
+                    return;
+                }
+                
                 animationFrames.hero = requestAnimationFrame(animate);
                 
                 const time = Date.now() * 0.001;
